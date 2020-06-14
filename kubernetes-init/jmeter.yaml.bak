@@ -1,0 +1,56 @@
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: master
+spec:
+  selector:
+    matchLabels:
+      app: master
+  serviceName: master
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: master
+    spec:
+      containers:
+      - name: master
+        image: karthiksurabathula/jmeter
+        args: ["-n -t /mnt/jmeter/JMXSCRIPT -l /mnt/jmeter/results/result-DATETIME.jtl -j /mnt/jmeter/logs/master-log-DATETIME.log -R SERVERS"]
+        env:
+        - name: JVM_ARGS
+          value: "-Xms512m -Xmx1024m"
+        - name: mode
+          value: "master"
+        resources:
+          limits:
+            memory: 1024Mi
+            cpu: 1000m
+          requests:
+            cpu: 1000m
+            memory: 1024Mi
+        volumeMounts:
+          - name: master
+            mountPath: /mnt/jmeter
+      volumes:
+      - name: master
+        hostPath:
+          path: PERSISTANCE
+          type: DirectoryOrCreate 
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: master
+spec:
+  selector:
+    app: master
+  ports:
+    - name: master
+      port: 1099
+  type: ClusterIP
+
+---

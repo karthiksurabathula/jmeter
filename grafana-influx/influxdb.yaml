@@ -1,0 +1,59 @@
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: influxdb
+spec:
+  selector:
+    matchLabels:
+      app: influxdb
+  serviceName: influxdb
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+      - name: influxdb
+        image: influxdb:1.8.0
+        env:
+        - name: INFLUXDB_DB
+          value: jmeter
+        - name: INFLUXDB_ADMIN_USER
+          value: admin
+        - name: INFLUXDB_ADMIN_PASSWORD
+          value: password123
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb/
+      volumes:
+      - name: data
+        hostPath:
+          path: /jmeter/grafana/data/influxdb/
+          type: DirectoryOrCreate 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+spec:
+  selector:
+    app: influxdb
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8086
+  type: ClusterIP
+
+---

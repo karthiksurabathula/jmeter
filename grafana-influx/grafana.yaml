@@ -1,0 +1,62 @@
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  serviceName: grafana
+  replicas: 1
+  template:
+    metadata:
+      labels:
+              app: grafana
+    spec:
+      containers:
+      - name: master
+        image: grafana/grafana:7.0.3
+        env:
+        - name: JVM_ARGS
+          value: "-Xms512m -Xmx512m"
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: admin
+        - name: GF_INSTALL_PLUGINS
+          value: grafana-clock-panel,grafana-worldmap-panel,grafana-piechart-panel
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/grafana
+      volumes:
+      - name: data
+        hostPath:
+          path: /jmeter/grafana/data/grafana/
+          type: DirectoryOrCreate 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3000
+      nodePort: 30000
+  type: NodePort
+
+---
