@@ -15,27 +15,24 @@ ENV JMETER_PLUGINS_FOLDER ${JMETER_HOME}/lib/ext/
 ENV TIMEZONE Asia/Kolkata
 
 RUN    apk update \
-	&& apk upgrade \
-	&& apk add ca-certificates \
-	&& update-ca-certificates \
+        && apk upgrade \ 
+        && apk add ca-certificates \
+        && update-ca-certificates \
             && apk add --update openjdk8-jre tzdata curl unzip bash \
             && cp /usr/share/zoneinfo/${TIMEZONE} /etc/localtime \
             && echo ${TIMEZONE} >  /etc/timezone \
-	&& rm -rf /var/cache/apk/* \
-	&& mkdir -p /tmp/dependencies  \
-	&& curl -L --silent ${JMETER_DOWNLOAD_URL} >  /tmp/dependencies/apache-jmeter-${JMETER_VERSION}.tgz  \
-	&& mkdir -p /opt  \
-	&& tar -xzf /tmp/dependencies/apache-jmeter-${JMETER_VERSION}.tgz -C /opt  \
-	&& rm -rf /tmp/dependencies
-
-#https://mvnrepository.com/artifact/kg.apc/jmeter-plugins-dummy
-RUN curl -L --silent ${JMETER_PLUGINS_DOWNLOAD_URL}/jmeter-plugins-dummy/0.2/jmeter-plugins-dummy-0.2.jar -o ${JMETER_PLUGINS_FOLDER}/jmeter-plugins-dummy-0.4.jar
-#https://mvnrepository.com/artifact/kg.apc/jmeter-plugins-cmn-jmeter/0.6
-RUN curl -L --silent ${JMETER_PLUGINS_DOWNLOAD_URL}/jmeter-plugins-cmn-jmeter/0.5/jmeter-plugins-cmn-jmeter-0.5.jar -o ${JMETER_PLUGINS_FOLDER}/jmeter-plugins-cmn-jmeter-0.6.jar
-
-ENV PATH $PATH:$JMETER_BIN
+        && rm -rf /var/cache/apk/* \
+        && mkdir -p /tmp/dependencies  \
+        && curl -L ${JMETER_DOWNLOAD_URL} >  /tmp/dependencies/apache-jmeter-${JMETER_VERSION}.tgz  \
+        && mkdir -p /opt  \
+        && tar -xzf /tmp/dependencies/apache-jmeter-${JMETER_VERSION}.tgz -C /opt  \
+        && rm -rf /tmp/dependencies \
+		##Pluginmanager Dependencies
+        && curl -L ${JMETER_PLUGINS_DOWNLOAD_URL}/jmeter-plugins-cmn-jmeter/0.6/jmeter-plugins-cmn-jmeter-0.6.jar -o ${JMETER_HOME}/lib/jmeter-plugins-cmn-jmeter-0.6.jar  \
+        && curl -L ${JMETER_PLUGINS_DOWNLOAD_URL}/jmeter-plugins-manager/1.4/jmeter-plugins-manager-1.4.jar -o ${JMETER_PLUGINS_FOLDER}/jmeter-plugins-manager-1.4.jar \
+        ##Dummy Sampler
+        && curl -L ${JMETER_PLUGINS_DOWNLOAD_URL}/jmeter-plugins-dummy/0.4/jmeter-plugins-dummy-0.4.jar -o ${JMETER_PLUGINS_FOLDER}/jmeter-plugins-dummy-0.4.jar
 
 COPY ./launch.sh /
 RUN chmod +x /launch.sh
-ENTRYPOINT ["/launch.sh"]
 CMD ["-n -t /mnt/jmeter/script.jmx -l /mnt/jmeter/results/reslut-$(date +'%m_%d_%Y-%H_%M_%S_%N').jtl -j /mnt/jmeter/logs/master-log-$(date +'%m_%d_%Y-%H_%M_%S_%N').log"]
