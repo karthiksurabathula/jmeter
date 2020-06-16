@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: karthiksurabathula/jmeter:v1
+        image: karthiksurabathula/jmeter
         args: ["-n -t /mnt/jmeter/JMXSCRIPT -l /mnt/jmeter/results/result-DATETIME.jtl -j /mnt/jmeter/logs/master-log-DATETIME.log -R SERVERS"]
         env:
         - name: JVM_ARGS

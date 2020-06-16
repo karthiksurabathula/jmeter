@@ -12,7 +12,7 @@ root@master:/jmeter/jenkins/data/workspace# docker images
 REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE  
 jmeter                      test                d83f4d7d6fa0        15 hours ago        217MB  
 
-docker tag \<Image ID\> \<docker repository name\>  
+docker tag <Image ID> <docker repository name>  
 
 
 Before pushing image you should validate your credentials  
@@ -21,4 +21,4 @@ docker login
 
 provide user name and password  
 
-docker push \<docker repository name\>  
+docker push <docker repository name>  
