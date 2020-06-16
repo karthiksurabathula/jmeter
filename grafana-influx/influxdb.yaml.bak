@@ -38,7 +38,7 @@ spec:
       volumes:
       - name: data
         hostPath:
-          path: /jmeter/grafana/data/influxdb/
+          path: PERSISTANCE
           type: DirectoryOrCreate 
 
 ---

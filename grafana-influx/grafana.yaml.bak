@@ -40,7 +40,7 @@ spec:
       volumes:
       - name: data
         hostPath:
-          path: /jmeter/grafana/data/grafana/
+          path: PERSISTANCE
           type: DirectoryOrCreate 
 
 ---

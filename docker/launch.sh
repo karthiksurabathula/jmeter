@@ -5,12 +5,15 @@ echo "JVM_ARGS=${JVM_ARGS}"
 
 echo "START Running Jmeter on `date`"
 
+#add properties
 echo server.rmi.ssl.disable=true >> /opt/apache-jmeter-5.3/bin/user.properties
 
+#Install PluginManager and plugins
 java -cp /opt/apache-jmeter-5.3/lib/ext/jmeter-plugins-manager-1.4.jar org.jmeterplugins.repository.PluginManagerCMDInstaller
 PluginsManagerCMD.sh install jpgc-casutg,jpgc-dummy
 PluginsManagerCMD.sh status
 
+#Start Jmeter
 if [ "$mode" == "master" ]; then
   jmeter $@
 else
