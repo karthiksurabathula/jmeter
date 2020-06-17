@@ -1,13 +1,22 @@
 pipeline {
     agent any
+	
     stages {
-        stage('Update Script') {
+		stage('Clean up existing data') {
+			steps {
+				dir('kubernetes-init/data') {
+					sh 'rm -rf *'
+					//echo "current build number: ${currentBuild.number}"
+				}
+			}
+		}
+        stage('Get latest Build') {
             steps {
                 echo 'Pulling latest script from GIT'
                 git 'https://github.com/karthiksurabathula/jmeter.git'
             }
         }
-        stage('Kubernetese Configuration') {
+        stage('Build Kubernetese Config') {
             steps {
                 sh 'mkdir -p `pwd`/kubernetes-init/data/;cp `pwd`/data/script.jmx `pwd`/kubernetes-init/data/script.jmx;'
                 sh 'cd `pwd`/kubernetes-init/;chmod 775 create.sh;./create.sh 2 script.jmx'
@@ -15,18 +24,20 @@ pipeline {
                 //echo "current build number: ${currentBuild.number}"
             }
         }
-        stage('Clean log files') {
+        stage('Deploying Jmeter Slave Pods') {
             steps {
-                sh 'rm -f `pwd`/kubernetes-init/data/logs/*'
-                echo 'log cleanup completed'
-                //echo "current build number: ${currentBuild.number}"
+				sh 'cd `pwd`/kubernetes-init/config/; ls; i=1;while [ "$i" -le 2 ]; do  microk8s kubectl apply -f slave$i.yaml; i=$(( i + 1 )); done'
+				sh 'sleep 60;'
+                echo 'Started Jmeter Slave Pods'
             }
         }
-        stage('Deploying Jmeter and Start test') {
+		stage('Starting JMeter Master and Test') {
             steps {
-                sh 'cd `pwd`/kubernetes-init/config/; ls; microk8s kubectl apply -f .;'
-                sh 'sleep 60;microk8s kubectl logs master-0 -f'
-                echo 'Creating Pods for master & slave and Start execution'
+				echo 'Starting Execution'
+                sh 'cd `pwd`/kubernetes-init/config/; microk8s kubectl apply -f master.yaml'
+                sh 'sleep 60;'
+				sh 'microk8s kubectl logs master -f'
+                
             }
         }
         stage('Stopping containers') {
@@ -35,15 +46,12 @@ pipeline {
                 echo 'Creating Pods for master & slave and Start execution'
             }
         }
-        stage('Result Generation') {
-            steps {
-                echo 'Creating HTML Report'
-            }
-        }
-        stage('Publish report') {
-            steps {
-                echo 'Publish HTML Report'
-            }
-        }
+		stage('Archive data') {
+			steps {
+				dir('kubernetes-init/data') {
+					archiveArtifacts artifacts: '**'
+				}
+			}
+		}
     }
 }
