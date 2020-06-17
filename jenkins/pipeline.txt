@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+    stages {
+        stage('Update Script') {
+            steps {
+                echo 'Pulling latest script from GIT'
+                git 'https://github.com/karthiksurabathula/jmeter.git'
+            }
+        }
+        stage('Kubernetese Configuration') {
+            steps {
+                sh 'mkdir -p `pwd`/kubernetes-init/data/;cp `pwd`/data/script.jmx `pwd`/kubernetes-init/data/script.jmx;'
+                sh 'cd `pwd`/kubernetes-init/;chmod 775 create.sh;./create.sh 2 script.jmx'
+                echo 'kubernetes configuration for Jmeter Masters and Slaves created successfully'
+                //echo "current build number: ${currentBuild.number}"
+            }
+        }
+        stage('Clean log files') {
+            steps {
+                sh 'rm -f `pwd`/kubernetes-init/data/logs/*'
+                echo 'log cleanup completed'
+                //echo "current build number: ${currentBuild.number}"
+            }
+        }
+        stage('Deploying Jmeter and Start test') {
+            steps {
+                sh 'cd `pwd`/kubernetes-init/config/; ls; microk8s kubectl apply -f .;'
+                sh 'sleep 60;microk8s kubectl logs master-0 -f'
+                echo 'Creating Pods for master & slave and Start execution'
+            }
+        }
+        stage('Stopping containers') {
+            steps {
+                sh 'cd `pwd`/kubernetes-init/config/; ls; microk8s kubectl delete -f .;'
+                echo 'Creating Pods for master & slave and Start execution'
+            }
+        }
+        stage('Result Generation') {
+            steps {
+                echo 'Creating HTML Report'
+            }
+        }
+        stage('Publish report') {
+            steps {
+                echo 'Publish HTML Report'
+            }
+        }
+    }
+}

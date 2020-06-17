@@ -18,7 +18,7 @@ while true
 do
  
  #create a config for slave
- cp jmeter.yaml.bak $CONFIGPATH'slave'$COUNTER.yaml
+ cp jmeter-slave.yaml.bak $CONFIGPATH'slave'$COUNTER.yaml
  #modify values to slave
  sed -i -e 's/master/slave'$COUNTER'/g' $CONFIGPATH'slave'$COUNTER.yaml
  #update script name
@@ -43,7 +43,7 @@ do
 done
 
 #master
-cp jmeter.yaml.bak $CONFIGPATH''master.yaml
+cp jmeter-master.yaml.bak $CONFIGPATH''master.yaml
 
 #update client ip's
 sed -i -e 's/SERVERS/'$IP'/g' $CONFIGPATH''master.yaml
