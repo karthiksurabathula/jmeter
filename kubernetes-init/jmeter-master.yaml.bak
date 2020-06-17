@@ -1,42 +1,35 @@
 ---
 
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Pod
 metadata:
   name: master
 spec:
-  selector:
-    matchLabels:
-      app: master
-  template:
-    metadata:
-      labels:
-        app: master
-    spec:
-      containers:
+  containers:
+  - name: master
+    image: karthiksurabathula/jmeter
+    args: ["-n -t /mnt/jmeter/JMXSCRIPT -l /mnt/jmeter/results/result-DATETIME.jtl -j /mnt/jmeter/logs/master-log-DATETIME.log  -e -o /mnt/jmeter/HtmlReport-DATETIME -R SERVERS"]
+    env:
+    - name: JVM_ARGS
+      value: "-Xms512m -Xmx1024m"
+    - name: mode
+      value: "master"
+    resources:
+      limits:
+        memory: 1024Mi
+        cpu: 1000m
+      requests:
+        cpu: 1000m
+        memory: 1024Mi
+    volumeMounts:
       - name: master
-        image: karthiksurabathula/jmeter
-        args: ["-n -t /mnt/jmeter/JMXSCRIPT -l /mnt/jmeter/results/result-DATETIME.jtl -j /mnt/jmeter/logs/master-log-DATETIME.log  -e -o /mnt/jmeter/HtmlReport -R SERVERS"]
-        env:
-        - name: JVM_ARGS
-          value: "-Xms512m -Xmx1024m"
-        - name: mode
-          value: "master"
-        resources:
-          limits:
-            memory: 1024Mi
-            cpu: 1000m
-          requests:
-            cpu: 1000m
-            memory: 1024Mi
-        volumeMounts:
-          - name: master
-            mountPath: /mnt/jmeter
-      volumes:
-      - name: master
-        hostPath:
-          path: PERSISTANCE
-          type: DirectoryOrCreate 
+        mountPath: /mnt/jmeter
+  volumes:
+    - name: master
+      hostPath:
+        path: PERSISTANCE
+        type: DirectoryOrCreate
+
 ---
 
 apiVersion: v1
