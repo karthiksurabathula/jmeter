@@ -1,4 +1,7 @@
 # Build and Push container to Docker Hub  
+
+Please refer http://www.perfblogspot.com/2020/06/docker-image-for-jmeter-with-plugin.html  
+
 Use the below command to create docker container  
 docker build -t jmeter:test .  
 
