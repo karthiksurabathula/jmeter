@@ -1,0 +1,914 @@
+---
+title: "Summary Report"
+output:
+  html_document: default
+params:
+  app_config: "app_config.csv"
+  transaction_config: "transaction_config.csv"
+---
+<style type="text/css">
+.main-container {
+  max-width: 3000px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+hr.divider {
+  border-top: 2px solid black;
+}
+
+details.description summary::after {
+  content: attr(data-open);
+  opacity: 0;
+  font-size: 5px;
+}
+
+details.description[open] summary::after {
+  content: attr(data-open);
+  opacity: 1;
+  font-size: 14px;
+}
+details.description summary::before {
+  content: attr(data-close);
+  opacity: 0;
+  font-size: 5px;
+}
+details.description:not([open]) summary::before {
+  content: attr(data-close);
+  opacity: 1;
+  font-size: 14px;
+}
+details.description summary::after,
+details.description summary::before {
+  display: inline-block;
+  transition: all .4s ease-in-out;
+  transform-origin: center bottom;
+}
+
+</style>
+
+<br>
+```{r set_color,results = 'asis', include=TRUE, echo = FALSE}
+text_success="#008000"
+text_failed="#e00000"
+# background_success="#A5F5AB"
+background_success="#EBFFE7"
+# background_failure="#FFB7B7"FFE9E9
+background_failure="#FFF2F2"
+
+other_text_color="black"
+```
+```{r extract_timings,results = 'asis', include=TRUE, echo = FALSE}
+
+
+start_time=format(as.POSIXct(as.double(test_results_markdown[1,c("start_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+end_time=format(as.POSIXct(as.double(test_results_markdown[1,c("end_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+```
+
+```{r create_fileMapUpdated,results = 'asis', include=TRUE, echo = FALSE}
+temp_result_filemap$merged=paste0("<b>",temp_result_filemap$temp_filename,"</b>: ",temp_result_filemap$filename)
+files_namess=data.frame(subset(temp_result_filemap,testType=="base")$merged,subset(temp_result_filemap,testType=="current")$merged)
+colnames(files_namess) <- c("base","current")
+files_namess$base[duplicated(files_namess$base)] <- NA
+files_namess$current[duplicated(files_namess$current)] <- NA
+```
+
+
+```{r overallSummary,results = 'asis', include=TRUE, echo = FALSE}
+
+cat("<b>Note</b>: Results from this reports are generated using filtered data")
+
+##Change file names to temporary names
+for(i in 1:nrow(final_results)){
+  
+  if(!is.na(final_results[i,"baseFilename"])){
+    base_fileName <- ""
+    files <- strsplit(final_results[i,"baseFilename"], ",")[[1]]
+    if(length(files)>1){
+      for(f in files){
+        if(base_fileName==""){
+          base_fileName <- subset(temp_result_filemap,filename==trimws(f))$temp_filename
+        }else{
+          base_fileName <- paste0(base_fileName,", ",subset(temp_result_filemap,filename==trimws(f))$temp_filename)
+        }
+      }
+    }else{
+        if(!rlang::is_empty(files)){
+          base_fileName=subset(temp_result_filemap,filename==trimws(files))$temp_filename
+        }
+    }
+
+    final_results[i,"baseFilename"] <- base_fileName
+  }
+  
+  if(!is.na(final_results[i,"currentFilename"])){
+    current_fileName <- ""
+    files <- strsplit(final_results[i,"currentFilename"], ",")[[1]]
+    if(length(files)>1){
+      for(f in files){
+        if(current_fileName==""){
+          current_fileName <- subset(temp_result_filemap,filename==trimws(f))$temp_filename
+        }else{
+          current_fileName <- paste0(current_fileName,", ",subset(temp_result_filemap,filename==trimws(f))$temp_filename)
+        }
+      }
+    }else{
+      if(!rlang::is_empty(files)){
+        current_fileName=subset(temp_result_filemap,filename==trimws(files))$temp_filename
+      }
+    }
+
+    final_results[i,"currentFilename"] <- current_fileName
+  }
+  
+}
+
+##Select result
+if(weighted_comparision==TRUE & generate_vs_comparision_weighted){
+  dat=subset(final_results,type=="standalone" | type=="weighted_comparison" | type=="comparison")
+} else if(weighted_comparision==TRUE) {
+  dat=subset(final_results,type=="standalone" | type=="weighted_comparison")
+}else {
+  if(base=="NA"){
+    dat=subset(final_results,type=="standalone")   
+  }else{
+    dat=subset(final_results,type=="standalone" | type=="comparison")
+  }
+}
+
+
+
+reactable(dat[,c("baseFilename","currentFilename","status","err_pct","type")],
+    defaultColDef = colDef(
+      # cell = function(value) format(value, nsmall = 1),
+      align = "center",
+      minWidth = 60,
+      headerStyle = list(background = "#f7f7f8")
+    ),
+    columns = list(
+      baseFilename=colDef(name="Base", align="center"),
+      currentFilename=colDef(name="Current", align="center"),
+      status=colDef(name="Status", align="center", maxWidth = 80,
+         style = function(value) {
+          if (value == "PASS") {
+            color <- text_success
+          } else if (value == "FAIL") {
+            color <- text_failed
+          }
+          list(color = color, fontWeight = "bold")
+         }
+         ),
+      err_pct=colDef(name="Total Transactions% with Error's", align="center", maxWidth = 120,
+          cell = function(value) {
+          paste0(value,"%")
+          }),
+      type=colDef(name="Type", align="center", maxWidth = 150)
+    ),
+  rowStyle = function(index) {
+    if(final_results[index,"status"]=="PASS"){
+      list(background = background_success, color = other_text_color )
+    }else{
+      list(background = background_failure, color = other_text_color )
+    }
+  },
+  minRows = 1,
+  outlined = TRUE, 
+  defaultPageSize = 50,
+  highlight = TRUE,
+  resizable = TRUE,
+  bordered = TRUE
+  )
+
+
+
+###Show table with tempFileName to actuall
+reactable(files_namess,
+  defaultColDef = colDef(
+    align = "center",
+    minWidth = 60,
+    headerStyle = list(background = "#f7f7f8")
+  ),
+  columns = list(
+    current=colDef(name="Current", align="center", minWidth = 200,
+          html = TRUE),
+    base=colDef(name="Base", align="center", minWidth = 200,
+          html = TRUE)
+  ),
+  outlined = TRUE,
+  highlight = TRUE,
+  resizable = TRUE,
+  bordered = TRUE
+  )
+
+  
+rm(files_namess)
+```
+
+<hr>
+
+```{r error_table_fun, results = 'asis', include=TRUE, echo = FALSE}
+rect_error_table <- function(dat, title, totalTransactions, failedTransactions) {
+  ret_err <- reactable(dat[,c("label","details")], 
+  defaultColDef = colDef(
+    align = "center",
+    minWidth = 60,
+    headerStyle = list(background = "#f7f7f8")
+  ),
+  columns = list(
+    label=colDef(name="Transaction", minWidth=200, align="left"),
+    details=colDef(name = "Error", minWidth=550, align="left",
+          cell = function(value) {
+          paste0("<ul>",value,"</ul")
+          },
+          html = TRUE)
+  ),
+    minRows = 1,
+    outlined = TRUE, 
+    pagination = FALSE,
+    height = 400,
+    filterable = TRUE,
+    highlight = TRUE,
+    # showPageSizeOptions = TRUE, 
+    # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+    # defaultPageSize = 5,
+    # paginationType = "jump",
+    resizable = TRUE,
+    bordered = TRUE,
+    rowStyle = function(index) {
+      list(color = other_text_color )
+  })
+  resultFile=title
+  if(grepl('_VS_',title)){
+    vsFiles <- strsplit(title,'_VS_')[[1]]
+    title<- paste0(subset(temp_result_filemap,filename==vsFiles[1])$temp_filename,"_VS_",subset(temp_result_filemap,filename==vsFiles[2])$temp_filename)
+  }else if(title!='Weighted_Comparision'){
+    title <- subset(temp_result_filemap,filename==title)$temp_filename
+  }
+  
+  cat("#### ",title,"   \n")
+  cat(paste0("<p><b>",failedTransactions," transactions failed out of ",totalTransactions,"</b></p>"))
+  cat(paste0("<p><b>Result</b>: ",resultFile,"</p>"))
+  cat('\n')
+  cat(as.character(htmltools::tagList(ret_err)))
+  cat('\n')
+}
+```
+
+### Errors {.tabset}
+```{r summary_errors, results = 'asis', include=TRUE, echo = FALSE}
+
+  # current_result_no
+  if(weighted_comparision==TRUE){
+      #Weighted Summary Error Tabs
+      dat=subset(aggregated,check=="FAIL")
+      title="Weighted_Comparision"
+      totalTransactions=nrow(aggregated)
+      failedTransactions=nrow(dat)
+      rect_error_table(dat,title, totalTransactions,failedTransactions)
+  }else {
+    if(base=="NA") {
+      #Current Test Error Tabs
+      dat=subset(test_results_markdown,testType=="current" & no==1 & check=="FAIL")
+      totalTransactions=nrow(subset(test_results_markdown,testType=="current" & no==1))
+      failedTransactions=nrow(dat)
+      title=dat[1,c("file")]
+      rect_error_table(dat,title, totalTransactions,failedTransactions)
+    }else{
+      #Comparision Error Tabs
+      comparisons <- unique(comparision_results_markdown[,c("vs")])
+      for(i in comparisons) {
+      	dat=subset(comparision_results_markdown,vs==i& check=="FAIL")
+      	totalTransactions=nrow(subset(comparision_results_markdown,vs==i))
+        failedTransactions=nrow(dat)
+        title=i
+        rect_error_table(dat,title, totalTransactions,failedTransactions)
+      }
+      #Current Test Error Tabs
+      current_result <- subset(test_results_markdown,testType=="current")
+      for(i in unique(current_result[,c("file")])) {
+        dat=subset(test_results_markdown,file==i & check=="FAIL")
+        totalTransactions=nrow(subset(test_results_markdown,file==i))
+        failedTransactions=nrow(dat)
+        title=dat[1,c("file")]
+        rect_error_table(dat,title, totalTransactions,failedTransactions)
+      }
+    }
+  }
+
+```
+
+<hr class="divider">
+
+# Current Test {.tabset}
+
+```{r currenTest, results = 'asis', include=TRUE, echo = FALSE}
+
+base_name <- ""
+for(file in strsplit(current, ",")[[1]]){
+  title <- subset(temp_result_filemap,filename==get_filename(file))$temp_filename
+  if(base_name==""){
+    base_name <- title
+    # base_name <- get_filename(file)
+  }else{
+    base_name <- paste0(base_name, ", ", title)
+    # base_name <- paste0(base_name, ", ", get_filename(file))
+  }
+}
+
+cat(paste0("<h5><b>",base_name,"</b></h5>"))
+cat(paste0("<details class=\"description\" close><summary data-open=\"Close\" data-close=\"Show\"></summary></summary>"))
+current_result <- subset(test_results_markdown,testType=="current")
+
+for(i in unique(current_result[,c("file")])) {
+  dat=filter(current_result,file==i)
+  #Transactions
+  ret <- reactable(dat[,c("label","check","avg","pc_95","sd","pass","fail","discard_pct","ci_95","kr","throughput","connect","receivedBytesPerSec","sentBytesPerSec","app")],
+  defaultColDef = colDef(
+    align = "center",
+    minWidth = 60,
+    headerStyle = list(background = "#f7f7f8"),
+    footerStyle = list(fontWeight = "bold")
+  ),
+  columns = list(
+    label=colDef(name="Transaction", minWidth=300, align="left",
+      details = function(value) {
+        if(dat[value,c("details")]!=""){
+        paste0("<pre><ul>",dat[value,c("details")],"</ul></pre>")
+        }
+      },  html = TRUE,
+    footer = "Total"),
+    check=colDef(name = "Status", align="center",
+         style = function(value) {
+          if (value == "PASS") {
+            color <- text_success
+          } else if (value == "FAIL") {
+            color <- text_failed
+          }
+          list(color = color, fontWeight = "bold")
+         }, minWidth=100),
+    avg = colDef(name="Average\nms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    pc_95 = colDef(name = "95%\nms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    sd = colDef(name="Std. Deviation", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    discard_pct = colDef(name="Discard%", format = colFormat(suffix = "%"), align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    pass=colDef(name="Pass",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    fail=colDef(name="Fail",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    ci_95 = colDef(name = "Confidence\nInterval 95% ms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    kr = colDef(name="Kurtosis", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    throughput = colDef(name="Throughput (TPS)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    connect = colDef(name="Connect ms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    receivedBytesPerSec = colDef(name="Received\n(KB/sec)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    sentBytesPerSec = colDef(name="Sent\n(KB/sec)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    app=colDef(name="App", align="center", minWidth=150)
+  ),
+  minRows = 1,
+  pagination = FALSE,
+  outlined = TRUE,
+  height = 550,
+  # searchable = TRUE,
+  filterable = TRUE,
+  onClick = "expand",
+  highlight = TRUE,
+  showSortIcon = TRUE,
+  # showPageSizeOptions = TRUE,
+  # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+  # defaultPageSize = 5,
+  # paginationType = "jump",
+  defaultExpanded = TRUE,
+  resizable = TRUE,
+  bordered = TRUE,
+  rowStyle = function(index) {
+    if(dat[index,"check"]=="PASS"){
+      list(background = background_success, color = other_text_color )
+    }else{
+      list(background = background_failure, color = other_text_color )
+    }
+  }
+  )
+  
+  start_time=format(as.POSIXct(as.double(dat[1,c("start_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+end_time=format(as.POSIXct(as.double(dat[1,c("end_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+
+  title <- subset(temp_result_filemap,filename==i)$temp_filename
+  cat("## ",title,"   \n")
+  cat(paste0("<p><b>",nrow(subset(dat, check=="FAIL"))," transactions failed out of ",nrow(dat),"</b></p>"))
+  cat(paste0("<p><b>",nrow(subset(dat, check=="PASS" & details!=""))," warnings</b></p>"))
+  cat(paste0("<p><b>Result</b>: ",i,"</p>"))
+  cat(paste0("<p><b>","Time</b>: ",start_time,"  <b>-</b> ",end_time,"</p>"))
+  
+  cat('\n')
+  cat(as.character(htmltools::tagList(ret)))
+  cat('\n')
+
+  cat(paste0("<details><summary><b>Warnings & Errors</b></summary>"))
+  #Add details
+  if(nrow(dat)>=1){
+    for(i in 1:nrow(dat)){
+      if(dat[i,c("details")]!=""){
+        cat(paste0("<li>**",dat[i,c("label")],"**:<ul>",dat[i,c("details")]),"</ul></li>")
+      }
+    }
+  }else{
+    cat("No errors found<br />")
+  }
+  cat('</details>')
+}
+
+cat('</details>')
+
+```
+<!-- </details> -->
+
+<hr>
+<!-- <div class="container-fluid main-container"> -->
+### Current test errors - JMeter {.tabset}
+```{r current_errors, results = 'asis', include=TRUE, echo = FALSE}
+cat(paste0("<h5><b>",base_name,"</b></h5>"))
+cat(paste0("<details class=\"description\" close><summary data-open=\"Close\" data-close=\"Show\"></summary></summary>"))
+for(i in unique(current_result[,c("file")])) {
+  err=filter(test_errors_markdown,file==i)
+  if(nrow(err)>0){
+    ret_err <- reactable(err[,c("label","responseCode","failureMessage","fail")], 
+  defaultColDef = colDef(
+    align = "center",
+    minWidth = 60,
+    headerStyle = list(background = "#f7f7f8")
+  ),
+  columns = list(
+    label=colDef(name="Transaction", minWidth=200, align="left"),
+    responseCode=colDef(name = "Response Code", align="center"),
+    failureMessage=colDef(name = "Error Message", minWidth=200, align="center"),
+    fail=colDef(name = "Failures", align="center")
+  ),
+    minRows = 1,
+    outlined = TRUE, 
+    filterable = TRUE,
+    pagination = FALSE,
+    height = 550,
+    highlight = TRUE,
+    # showPageSizeOptions = TRUE, 
+    # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+    # defaultPageSize = 5,
+    # paginationType = "jump",
+    resizable = TRUE,
+    bordered = TRUE,
+    rowStyle = function(index) {
+      list(color = other_text_color )
+  })
+  
+  resultFile=i
+  title <- subset(temp_result_filemap,filename==i)$temp_filename
+  
+  cat("#### ",title,"   \n")
+  cat('\n')
+  cat(paste0("<p><b>Result</b>: ",resultFile,"</p>"))
+  cat(as.character(htmltools::tagList(ret_err)))
+  cat('\n')
+  }else{
+    cat("#### ",title,"   \n")
+    cat('\n')
+    cat(paste0("<p><b>Result</b>: ",resultFile,"</p>"))
+    cat("No Errors found")
+    cat('\n')    
+  }
+}
+cat('</details>')
+cat("<hr class=\"divider\">")
+```
+<!-- <hr class="divider"> -->
+<!-- </div> -->
+
+```{r , include=TRUE, echo = FALSE}
+# rm(ret)
+# rm(base_name)
+# rm(dat)
+```
+
+<div class="container-fluid main-container">
+```{r baseline, results = 'asis', include=TRUE, echo = FALSE}
+if(base!="NA"){
+  cat('# Baseline test {.tabset}   \n')
+  base_name <- ""
+  for(file in strsplit(base, ",")[[1]]){
+    title <- subset(temp_result_filemap,filename==get_filename(file))$temp_filename
+    if(base_name==""){
+      base_name <- title
+    }else{
+      base_name <- paste0(base_name, ", ", title)
+    }
+  }
+  
+  cat(paste0("<h5><b>",base_name,"</b></h5>"))
+  cat(paste0("<details class=\"description\" close><summary data-open=\"Close\" data-close=\"Show\"></summary></summary>"))
+  base_result<- subset(test_results_markdown,testType=="base")
+  
+  for(i in unique(base_result[,c("file")])) {
+    dat=filter(base_result,file==i)
+    ret=reactable(dat[,c("label","check","avg","pc_95","sd","pass","fail","discard_pct","ci_95","kr","throughput","connect","receivedBytesPerSec","sentBytesPerSec","app")],
+      defaultColDef = colDef(
+        align = "center",
+        minWidth = 60,
+        headerStyle = list(background = "#f7f7f8"),
+        footerStyle = list(fontWeight = "bold")
+      ),
+      columns = list(
+        label=colDef(name="Transaction",minWidth=200, align="left",
+          details = function(value) {
+            if(dat[value,c("details")]!=""){
+            paste0("<pre><ul>",dat[value,c("details")],"</ul></pre>")
+            }
+          }, html = TRUE, footer = "Total"),
+        check=colDef(name="Status",align="center", minWidth=100,
+         style = function(value) {
+          if (value == "PASS") {
+            color <- text_success
+          } else if (value == "FAIL") {
+            color <- text_failed
+          }
+          list(color = color, fontWeight = "bold")
+         }),
+        avg = colDef(name="Averag\nms",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        pc_95 = colDef(name="95%\nms",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        sd = colDef(name="Std. Deviation",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        discard_pct = colDef(name="Discard%",aggregate = "sum",format = colFormat(suffix = "%"), align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        pass=colDef(name="Pass",aggregate = "sum",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+        fail=colDef(name="Fail",aggregate = "sum",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+        ci_95 = colDef(name="Confidence Interval\n95% ms",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        kr = colDef(name="Kurtosis",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        throughput = colDef(name="Throughput (TPS)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    connect = colDef(name="Connect ms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    receivedBytesPerSec = colDef(name="Received\n(KB/sec)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+    sentBytesPerSec = colDef(name="Sent\n(KB/sec)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+        app=colDef(name="App",align="center", minWidth=150)
+      ),
+      minRows = 1,
+      outlined = TRUE, 
+      filterable = TRUE,
+      highlight = TRUE,
+      onClick = "expand",
+      pagination = FALSE,
+      height = 550,
+      # showPageSizeOptions = TRUE, 
+      # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+      # defaultPageSize = 5,
+      # paginationType = "jump",
+      defaultExpanded = TRUE,
+      resizable = TRUE,
+      bordered = TRUE,
+      rowStyle = function(index) {
+        if(dat[index,"check"]=="PASS"){
+          list(background = background_success, color = other_text_color)
+        }else{
+          list(background = background_failure, color = other_text_color)
+        }
+      }
+    )
+    
+   
+  start_time=format(as.POSIXct(as.double(dat[1,c("start_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+end_time=format(as.POSIXct(as.double(dat[1,c("end_time")]) / 1000, origin = "1970-01-01", tz = "EST"), "%Y-%m-%d %H:%M:%OS3")
+    
+
+  resultFile=i
+  title <- subset(temp_result_filemap,filename==i)$temp_filename
+  
+  cat("## ",title,"   \n")
+  cat("")
+  cat('\n')
+  cat(paste0("<p><b>",nrow(subset(dat, check=="FAIL"))," transactions failed out of ",nrow(dat),"</b></p>"))
+  cat(paste0("<p><b>",nrow(subset(dat, check=="PASS" & details!=""))," warnings</b></p>"))
+  cat(paste0("<p><b>Result</b>: ",resultFile,"</p>"))
+  cat(paste0("<p><b>","Time</b>: ",start_time,"  <b>-</b> ",end_time,"</p>"))
+  cat(as.character(htmltools::tagList(ret)))
+  cat('\n')
+  
+  cat(paste0("<details><summary><b>Warnings & Errors</b></summary>"))
+  # cat("<b>Warnings & Errors:</b><br />")
+  #Add details
+  if(nrow(dat)>=1){
+    for(i in 1:nrow(dat)){
+      if(dat[i,c("details")]!=""){
+        cat(paste0("<li>**",dat[i,c("label")],"**:<ul>",dat[i,c("details")]),"</ul></li>")
+      }
+    }
+  }else{
+    cat("No errors found<br />")
+  }
+  cat('</details>')
+    
+  
+  }
+  cat('</details>')
+}
+
+```
+</div>
+
+
+
+```{r , include=TRUE, echo = FALSE}
+# rm(dat)
+# rm(ret)
+# rm(base_result)
+```
+
+<div class="container-fluid main-container">
+```{r comprision, results = 'asis', include=TRUE, echo = FALSE}
+  if((weighted_comparision!=TRUE  & base!="NA") | generate_vs_comparision_weighted){
+
+  if(base!="NA"){
+    cat("<hr class=\"divider\">")
+    
+     cat('# Comparison {.tabset}   \n')
+     
+     
+     
+     comparisons <- unique(comparision_results_markdown[,c("vs")])
+     title <- ""
+     for(i in comparisons) {
+       vsFiles <- strsplit(i,'_VS_')[[1]]
+       res<- paste0(subset(temp_result_filemap,filename==vsFiles[1])$temp_filename,"_VS_",subset(temp_result_filemap,filename==vsFiles[2])$temp_filename)
+       if(title==""){
+         title <- res
+       }else{
+         title <- paste0(title,", ",res)
+       }
+     }
+  
+        cat("<b>",title,"</b>")
+     cat(paste0("<details class=\"description\" close><summary data-open=\"Close\" data-close=\"Show\"></summary></summary>"))
+  
+     for(i in comparisons) {
+       dat=filter(comparision_results_markdown,vs==i)
+       ret=reactable(dat[,c("label","check","pass.x","pass.y","fail.x","fail.y","avg.x","avg.y","avg_rpd","discard_pct.x","discard_pct.y","ci_95.x","ci_95.y","kr.x","kr.y","throughput.x","throughput.y","connect.x","connect.y","receivedBytesPerSec.x","receivedBytesPerSec.y","sentBytesPerSec.x","sentBytesPerSec.y","app")],
+        defaultColDef = colDef(
+          align = "center",
+          minWidth = 60,
+          headerStyle = list(background = "#f7f7f8"),
+          footerStyle = list(fontWeight = "bold")
+        ),
+         columns = list(
+           label=colDef(name="Transaction",minWidth=200, align="left",
+            details = function(value) {
+              if(dat[value,c("details")]!=""){
+              paste0("<pre><ul>",dat[value,c("details")],"</ul></pre>")
+              }
+            }, html = TRUE, footer = "Total"),
+           check=colDef(name="Status",align="center",
+           style = function(value) {
+            if (value == "PASS") {
+              color <- text_success
+            } else if (value == "FAIL") {
+              color <- text_failed
+            }
+            list(color = color, fontWeight = "bold")
+           }, minWidth=100),
+           pass.x=colDef(name="Pass\nBaseline",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+           pass.y=colDef(name="Pass Current",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+           fail.x=colDef(name="Fail Baseline",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           fail.y=colDef(name="Fail Current",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           avg.x=colDef(name="Average Baseline ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           avg.y=colDef(name="Average Current ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           avg_rpd=colDef(name="Delta% Average",align="center",format = colFormat(suffix = "%"),
+           cell = function(value) {
+            paste0(value,"%")
+            },
+           style = function(value) {
+            if (value > 0) {
+              color <- text_success
+            } else if (value < 0) {
+              color <- text_failed
+            } else {
+              color <- "#777"
+            }
+            list(color = color, fontWeight = "bold")
+           }, minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           discard_pct.x=colDef(name="Discard% Baseline",align="center",format = colFormat(suffix = "%"),
+           cell = function(value) {
+            paste0(value,"%")
+            }, minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           discard_pct.y=colDef(name="Discard% Current",align="center",format = colFormat(suffix = "%"),
+           cell = function(value) {
+            paste0(value,"%")
+            }, minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           ci_95.x=colDef(name="Confidence Interval Baseline ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           ci_95.y=colDef(name="Confidence Interval Current ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           kr.x = colDef(name="Kurtosis Baseline",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           kr.y = colDef(name="Kurtosis Current",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           throughput.x = colDef(name="Throughput Baseline (TPS)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           throughput.y = colDef(name="Throughput Current (TPS)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           connect.x = colDef(name="Connect Baseline ms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           connect.y = colDef(name="Connect Current ms", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           receivedBytesPerSec.x = colDef(name="Received\n(KB/sec) Baseline", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           receivedBytesPerSec.y = colDef(name="Received\n(KB/sec) Current", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           sentBytesPerSec.x = colDef(name="Sent\n(KB/sec Baseline)", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           sentBytesPerSec.y = colDef(name="Sent\n(KB/sec) Current", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+           app=colDef(name="App",align="center", minWidth=150)
+         ),
+        minRows = 1,
+        outlined = TRUE,
+        filterable = TRUE,
+        pagination = FALSE,
+        height = 550,
+        onClick = "expand",
+        highlight = TRUE,
+        # showPageSizeOptions = TRUE,
+        # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+        # defaultPageSize = 5,
+        # paginationType = "jump",
+        bordered = TRUE,
+        resizable = TRUE,
+        defaultExpanded = TRUE,
+        rowStyle = function(index) {
+          if(dat[index,"check"]=="PASS"){
+            list(background = background_success, color = other_text_color)
+          }else{
+            list(background = background_failure, color = other_text_color)
+          }
+        }
+    )
+       
+       
+    if(grepl('_VS_',i)){
+      vsFiles <- strsplit(i,'_VS_')[[1]]
+      title<- paste0(subset(temp_result_filemap,filename==vsFiles[1])$temp_filename,"_VS_",subset(temp_result_filemap,filename==vsFiles[2])$temp_filename)
+    }
+    
+      cat("## ",title,"   \n")
+      cat("")
+      cat('\n')
+      cat(paste0("<p><b>",nrow(subset(dat, check=="FAIL"))," transactions failed out of ",nrow(dat),"</b></p>"))
+      cat(paste0("<p><b>",nrow(subset(dat, check=="PASS" & details!=""))," warnings</b></p>"))
+      cat(paste0("<p><b>Result</b>: ",i,"</p>"))
+      cat(as.character(htmltools::tagList(ret)))
+      cat('\n')
+      
+      cat(paste0("<details><summary><b>Warnings & Errors</b></summary>"))
+    
+    
+    # Add details
+    if(nrow(dat)>=1){
+        for(i in 1:nrow(dat)){
+          if(dat[i,c("details")]!=""){
+            cat(paste0("<li>**",dat[i,c("label")],"**:<ul>",dat[i,c("details")]),"</ul></li>")
+          }
+        }
+      }else{
+        cat("No errors found<br />")
+      }
+    cat('</details>')
+    
+    }
+    cat('</details>')
+  }
+}
+```
+
+```{r comprision_weighted, results = 'asis', include=TRUE, echo = FALSE}
+
+if(weighted_comparision == TRUE){
+  
+   cat("<hr>")
+  
+    base_name=""
+    temp_rest_name_base=""
+    for(file in unique(subset(test_results_markdown,testType=="base")$file)){
+      base_temp=subset(temp_result_filemap,filename==get_filename(file))$temp_filename
+      if(base_name==""){
+        base_name <- get_filename(file)
+        temp_rest_name_base <- base_temp
+      }else{
+        base_name <- paste0(base_name, ", ", get_filename(file))
+        temp_rest_name_base <- paste0(temp_rest_name_base, ", ", base_temp)
+      }
+    }
+    current_name=""
+    temp_rest_name_current=""
+    for(file in unique(subset(test_results_markdown,testType=="current")$file)){
+      current_temp=subset(temp_result_filemap,filename==get_filename(file))$temp_filename
+      if(current_name==""){
+        current_name <- get_filename(file)
+        temp_rest_name_current <- current_temp
+      }else{
+        current_name <- paste0(current_name, ", ", get_filename(file))
+        temp_rest_name_current <- paste0(temp_rest_name_current, ", ", current_temp)
+      }
+    }
+  
+  ret_weighted <- reactable(aggregated[c("label","check","pass.x","pass.y","fail.x","fail.y","avg.x","avg.y","delta","ci_95.x","ci_95.y","sd.x","sd.y","kr.x","kr.y","discard_pct.x","discard_pct.y","throughput.x","throughput.y","connect.x","connect.y","receivedBytesPerSec.x","receivedBytesPerSec.y","sentBytesPerSec.x","sentBytesPerSec.y")],
+    defaultColDef = colDef(
+      align = "center",
+      minWidth = 60,
+      headerStyle = list(background = "#f7f7f8"),
+      footerStyle = list(fontWeight = "bold")
+    ),
+    columns = list(
+            label=colDef(name="Transaction", minWidth=300,maxWidth=300, align="left", style = list(position = "sticky", left = 0, background = "#fff", zIndex = 1),headerStyle = list(position = "sticky", left = 0, background = "#f7f7f8", zIndex = 1),
+        details = function(value) {
+        
+        if(aggregated[value,c("details")]!=""){
+          as.character(paste0("<pre><ul>",aggregated[value,c("details")],"</ul></pre>"))
+        }
+      }, html = TRUE, footer = "Total"),
+      check=colDef(name="Status",align="center", minWidth=100,
+          style = function(value) {
+          if (value == "PASS") {
+            color = text_success
+            background = background_success
+          } else if (value == "FAIL") {
+            color = text_failed
+            background = background_failure
+          }
+          list(color = color, fontWeight = "bold", position = "sticky", left = 300, background = background, zIndex = 1)
+         },headerStyle = list(position = "sticky", left = 300, background = "#f7f7f8", zIndex = 1)),
+      pass.x=colDef(name="Pass Baseline",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+      pass.y=colDef(name="Pass Current",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+      fail.x=colDef(name="Fail Baseline",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+      fail.y=colDef(name="Fail Current",align="center", minWidth=100, footer = function(values) sprintf("%d", sum(values))),
+      avg.x=colDef(name="Average Baseline ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      avg.y=colDef(name="Average Current ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      delta=colDef(name="Delta%",align="center", minWidth=100,
+         cell = function(value) {
+          paste0(value,"%")
+          },
+         style = function(value) {
+          if (value > 0) {
+            color <- text_success
+          } else if (value < 0) {
+            color <- text_failed
+          } else {
+            color <- "#777"
+          }
+          list(color = color, fontWeight = "bold")
+         }, footer = function(values) sprintf("%.2f", sum(values))),
+      ci_95.x=colDef(name="Confidence Interval Baseline 95% ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      ci_95.y=colDef(name="Confidence Interval Current 95% ms",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      sd.x=colDef(name="Std. Deviation Baseline",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      sd.y=colDef(name="Std. Deviation Current",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      kr.x=colDef(name="Kurtosis Baseline",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      kr.y=colDef(name="Kurtosis Current",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      discard_pct.x=colDef(name="Discard% Baseline",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      discard_pct.y=colDef(name="Discard% Current",align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values))),
+      throughput.x = colDef(name="Throughput Baseline (TPS)",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      throughput.y = colDef(name="Throughput Current (TPS)",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      connect.x = colDef(name="Connect Baseline ms",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      connect.y = colDef(name="Connect Current ms",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      receivedBytesPerSec.x = colDef(name="Received\n(KB/sec) Baseline",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      receivedBytesPerSec.y = colDef(name="Received\n(KB/sec) Current",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      sentBytesPerSec.x = colDef(name="Sent\n(KB/sec) Baseline",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      sentBytesPerSec.y = colDef(name="Sent\n(KB/sec) Current",aggregate = "sum", align="center", minWidth=100, footer = function(values) sprintf("%.2f", sum(values)),format = colFormat(digits = 2)),
+      app=colDef(name="App",align="center", minWidth=150)
+    ),
+      minRows = 1,
+      outlined = TRUE, 
+      filterable = TRUE,
+      highlight = TRUE,
+      pagination = FALSE,
+      height = 600,
+      onClick = "expand",
+      # showPageSizeOptions = TRUE, 
+      # pageSizeOptions = c(5, 10, 20, 30,40, 50,100,200),
+      # defaultPageSize = 5,
+      # paginationType = "jump",
+      resizable = TRUE,
+      wrap = TRUE,
+      bordered = TRUE,
+      defaultExpanded = TRUE,
+      rowStyle = function(index) {
+        if(aggregated[index,"check"]=="PASS"){
+          list(background = background_success, color = other_text_color)
+        }else{
+          list(background = background_failure, color = other_text_color)
+        }
+      }
+    )
+  
+  cat("### Comparison - weighted  \n")
+  cat(paste0(" <b>Average of Baseline Tests</b>: ",temp_rest_name_base,"<br>",
+             "&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<b>VS</b><br>",
+             " <b>Average of Current Tests</b>:",temp_rest_name_current,"<br>"))
+  # Comparison Same Table no Sub Tabs
+  cat(paste0("<details class=\"description\" close><summary data-open=\"Close\" data-close=\"Show\"></summary>"))
+  cat(paste0("<p><b>",nrow(subset(aggregated, check=="FAIL"))," transactions failed out of ",nrow(aggregated),"</b></p>"))
+  cat(paste0("<p><b>",nrow(subset(dat, check=="PASS" & details!=""))," warnings</b></p>"))
+  cat(paste0("<p><b>Average of Baseline Tests</b>: ",base_name,"</p>"))
+  cat(paste0("<p><b>Average of Current Tests</b>: ",current_name,"</p>"))
+  cat("\n")
+  cat(as.character(htmltools::tagList(ret_weighted)))
+  cat(paste0("<details><summary><b>Warnings & Errors</b></summary>"))
+  
+  # Add details
+  if(nrow(aggregated)>=1){
+      for(i in 1:nrow(aggregated)){
+        if(aggregated[i,c("details")]!=""){
+          cat(paste0("<li>**",aggregated[i,c("label")],"**:<ul>",aggregated[i,c("details")]),"</ul></li>")
+        }
+      }
+    }else{
+      cat("No errors found<br />")
+    }
+  cat('</details>')
+  cat('</details>')
+cat("<hr class=\"divider\">")
+}
+```
+</div>
+<br>

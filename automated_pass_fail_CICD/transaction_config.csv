@@ -1,0 +1,8 @@
+type,transaction,skip,rt_metric,rt_sla,rt_notify,rt_alert,rt_prod,rt_deviation_pct_allowed,error_pct,error_deviation_pct_allowed,discard_pct_allow,discard_deviation_pct_allowed,rt_rpd_allow,rt_rpd_deviation_pct_allowed,samples_rpd_allow,check,app,comment
+s,_default_,TRUE,avg,2,3,4,2,10,1,3,10,3,,,,ed,NONE,"Default, allowed checks: snaped"
+c,_default_,TRUE,avg,,,,,,,,,,5,,5,rs,NONE,"Default, allowed checks: snaped"
+s,Sample- Get User - Principal,FALSE,avg,1,1.5,2,1.5,10,10,3,10,3,,3,,snaped,web,Sample
+s,Sample- Login Request,FALSE,pc_90,140,145,150,130,10,10,3,10,3,,3,,snaped,web,Sample
+s,Sample- Register,TRUE,pc_95,,,,,10,,,,,,,,snaped,api,Testing
+c,Sample- Login Request,FALSE,avg,,,,,,,,,,10,3,10,rs,api,Sample
+c,Sample- Register,TRUE,avg,,,,,,,,,,5,3,5,rs,api,Sample- Skipped due to config

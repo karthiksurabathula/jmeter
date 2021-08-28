@@ -1,0 +1,23 @@
+property,value,comment
+algorithm,boxplot,"If not required, replace with NA"
+required_successful_comparisons,3,minimum successful comparisions required to make the test successful
+continue_on_standalone_failure,TRUE,"To continue even if the currrent test assertion conditions fails, set to TRUE else FALSE"
+throw_error_on_standalone_failure,FALSE,property to throw error on standalone failure
+throw_error_on_comparison_failure,FALSE,property to throw error on comparision failure
+standalone_max_txn_error_pct,5,max allowed transactions with errors in current test
+compare_max_txn_error_pct,5,max allowed transactions with errors in comparison test
+enable_dbscan_alogrithm,TRUE,IF enabled any transaction which are more than discard threshold will be analzed using dbscan algorithm
+aggregated_results_store,aggregated_results_store.csv.gz,"Aggregated result store- temporary, if gz is not added at end file will not be compressed"
+enable_archive_current_test,TRUE,"If enabled restults from current test will be stored for later, this should be used only if file name is unique"
+show_base_result_issues_summary,FALSE,If set to false baseline test issues will not be printed to command line
+use_filename_as_identifier,FALSE,"Set to false if the file name is not unique, if set to FALSE custom name is formed for test name - explicit for 3PT due the common file name"
+enable_html_report,TRUE,To generate HTML report enable this
+html_report_output_directory,C:\dev\workspace\R\comparision,Path to generate HTML report
+include,(^RPT|^MAI).*([^-0-9]+$),Multiple include can be added as per requirement- Included to extract Transactions that follow pattern used by 3PT
+exclude,*.Login.*,Multiple excludes can be added as per requirement-  - Remove Transactions with Pattern that are added apart from the first
+network_drive,TRUE,"IF you are using network drive enable to TRUE, temp copy of script will be created and removed after execution"
+error_results_store,error_results_store.csv.gz,Temporary storage for errors from results file
+generate_compare_current_vs_base_weighted,FALSE,If enabled all the current to base tests are generated during weighted comparision
+get_best_of_all_results_for_weighted_summary,FALSE,"If enabled best result from all the available results file are selected for weighted comparision, on an average it was observed to take ~9 seconds for 100 combinations- limitation of mulithreading in windows"
+number_of_result_file_to_be_merged_for_weighted_summary,4,"this specify how my restul files to merge to get to best weighted summary, this is part of extracting best results from available"
+copy_data_files_to_local_temp,TRUE,If enabled data files will be copied to temporary directory before processing
